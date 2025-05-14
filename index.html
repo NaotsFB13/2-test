@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鮮やかなテトリス</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #202020;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Center content vertically for taller screens */
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            touch-action: manipulation;
+        }
+        h1 {
+            font-size: 2.2em;
+            color: #f0f0f0;
+            text-shadow: 2px 2px #ff00ff, 4px 4px #00ffff;
+            margin-bottom: 15px;
+            text-align: center; /* Ensure h1 is centered */
+        }
+        .game-wrapper { /* Added wrapper for better centering of all game elements */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        .game-container {
+            display: flex; /* Default to row layout for canvas and info-panel */
+            align-items: flex-start; /* Align items to the top */
+            gap: 15px;
+            border: 4px solid #444;
+            padding: 15px;
+            background-color: #303030;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            width: auto; /* Fit content */
+        }
+        canvas { /* Base canvas style */
+            border: 3px solid #505050;
+            background-color: #101010;
+            border-radius: 10px;
+        }
+        /* #tetrisCanvas size is set by JS */
+
+        .info-panel {
+            width: 180px; /* Default width for side-by-side layout */
+            text-align: center;
+            font-size: 0.9em;
+            padding: 10px;
+            background-color: #282828;
+            border-radius: 10px;
+            border: 2px solid #484848;
+            display: flex;
+            flex-direction: column; /* Ensure items inside info-panel stack vertically */
+            align-items: center; /* Center items like canvases within info-panel */
+        }
+        .info-panel p {
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+        .info-panel span {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        #holdCanvas, #nextBlockCanvas {
+            display: block;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border: 2px solid #404040;
+            background-color: #181818;
+            border-radius: 5px;
+        }
+
+        .controls-panel {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background-color: #282828;
+            border-radius: 10px;
+            border: 2px solid #484848;
+            text-align: center;
+            width: 90%;
+            max-width: 450px; /* Max width for controls, can be wider than game area */
+        }
+        .controls-panel h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #f0f0f0;
+            font-size: 1em;
+        }
+        .controls-panel p {
+            font-size: 0.8em;
+            margin: 5px 0;
+        }
+        .mobile-controls {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: auto auto auto;
+            gap: 8px;
+            width: 100%;
+            max-width: 280px;
+        }
+        .mobile-controls button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9em;
+            padding: 12px 8px;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            border-style: solid;
+            border-width: 2px;
+        }
+        .mobile-controls button:active {
+            transform: translateY(2px);
+        }
+
+        .hold-btn { grid-column: 1; grid-row: 1; background-color: #FFC107; border-color: #FFA000; box-shadow: 0 3px #FF8F00; }
+        .hold-btn:active { background-color: #FFA000; box-shadow: 0 1px #FF6F00; }
+        .rotate-btn { grid-column: 2; grid-row: 1; background-color: #4CAF50; border-color: #388E3C; box-shadow: 0 3px #2E7D32; }
+        .rotate-btn:active { background-color: #388E3C; box-shadow: 0 1px #1B5E20; }
+        .mobile-controls .empty { grid-column: 3; grid-row: 1; visibility: hidden; }
+        .left-btn { grid-column: 1; grid-row: 2; background-color: #2196F3; border-color: #1976D2; box-shadow: 0 3px #0D47A1; }
+        .left-btn:active { background-color: #1976D2; box-shadow: 0 1px #0D47A1;}
+        .down-btn { grid-column: 2; grid-row: 2; background-color: #2196F3; border-color: #1976D2; box-shadow: 0 3px #0D47A1; }
+        .down-btn:active { background-color: #1976D2; box-shadow: 0 1px #0D47A1;}
+        .right-btn { grid-column: 3; grid-row: 2; background-color: #2196F3; border-color: #1976D2; box-shadow: 0 3px #0D47A1; }
+        .right-btn:active { background-color: #1976D2; box-shadow: 0 1px #0D47A1;}
+        .drop-btn { grid-column: 1 / span 3; grid-row: 3; background-color: #F44336; border-color: #D32F2F; box-shadow: 0 3px #C62828; }
+        .drop-btn:active { background-color: #D32F2F; box-shadow: 0 1px #B71C1C; }
+
+        #gameOverMessage {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.85);
+            color: #ff0000;
+            padding: 25px;
+            border-radius: 10px;
+            font-size: 1.8em;
+            text-align: center;
+            display: none;
+            border: 3px solid #8B0000;
+            z-index: 1000;
+        }
+        #gameOverMessage button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.6em;
+            padding: 10px 15px;
+            margin-top: 15px;
+            background-color: #00ff00;
+            color: #101010;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px #00cc00;
+        }
+        #gameOverMessage button:active {
+            background-color: #00cc00;
+            box-shadow: 0 1px #009900;
+            transform: translateY(1px);
+        }
+
+        /* General mobile adjustments (e.g., for tablets and phones) */
+        @media (max-width: 768px) {
+            body {
+                justify-content: flex-start; /* Align to top on mobile if content overflows viewport height */
+                padding-top: 15px; /* Reduced padding */
+                padding-bottom: 15px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            .game-container {
+                 /* Side-by-side layout is maintained if screen is wider than 520px */
+                padding: 10px;
+            }
+            .controls-panel {
+                margin-top:10px;
+                max-width: 90%; /* Allow controls panel to use more width */
+            }
+        }
+
+        /* Stacking layout for smaller screens */
+        @media (max-width: 520px) {
+            h1 {
+                font-size: 1.6em; /* Further reduce H1 */
+            }
+            .game-container {
+                flex-direction: column; /* Stack canvas and info-panel */
+                align-items: center; /* Center items when stacked */
+            }
+            .info-panel {
+                width: 90%; /* Allow info-panel to take more width when stacked */
+                max-width: 280px;
+                order: 1; /* Info panel below canvas */
+                margin-top: 10px; /* Add margin when stacked */
+                margin-bottom: 10px;
+            }
+            #tetrisCanvas {
+                order: 0; /* Canvas above info panel */
+            }
+            .controls-panel {
+                 max-width: 280px; /* Match mobile controls width */
+            }
+        }
+
+        /* Further adjustments for very small screens */
+        @media (max-width: 380px) {
+            h1 { font-size: 1.4em; }
+            .info-panel { font-size: 0.8em; }
+            .mobile-controls button { font-size: 0.8em; padding: 10px 5px;}
+            .controls-panel p { font-size: 0.7em;}
+            .game-container { padding: 5px; gap: 10px;}
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper"> <h1>テトリス</h1>
+
+        <div class="game-container">
+            <canvas id="tetrisCanvas"></canvas>
+            <div class="info-panel">
+                <p>スコア: <span id="score">0</span></p>
+                <p>ライン: <span id="lines">0</span></p>
+                <p>レベル: <span id="level">1</span></p>
+                <p>ホールド:</p>
+                <canvas id="holdCanvas" width="96" height="96"></canvas>
+                <p>次のブロック:</p>
+                <canvas id="nextBlockCanvas" width="96" height="96"></canvas>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <h3>操作方法</h3>
+            <p>← → / A D : 移動</p>
+            <p>↑ / W : 回転</p>
+            <p>↓ / S : ソフトドロップ</p>
+            <p>スペース : ハードドロップ</p>
+            <p>C / Shift : ホールド</p>
+        </div>
+
+        <div class="mobile-controls">
+            <button id="holdBtn" class="hold-btn">ホールド</button>
+            <button id="rotateBtn" class="rotate-btn">回転</button>
+            <button class="empty"></button>
+            <button id="leftBtn" class="left-btn">左</button>
+            <button id="downBtn" class="down-btn">下</button>
+            <button id="rightBtn" class="right-btn">右</button>
+            <button id="dropBtn" class="drop-btn">ドロップ</button>
+        </div>
+    </div> <div id="gameOverMessage">
+        ゲームオーバー!
+        <button id="restartButton">リスタート</button>
+    </div>
+
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('tetrisCanvas');
+        const context = canvas.getContext('2d');
+        const nextBlockCanvas = document.getElementById('nextBlockCanvas');
+        const nextBlockContext = nextBlockCanvas.getContext('2d');
+        const holdCanvas = document.getElementById('holdCanvas'); // Hold Canvas
+        const holdContext = holdCanvas.getContext('2d');       // Hold Context
+
+        const scoreElement = document.getElementById('score');
+        const linesElement = document.getElementById('lines');
+        const levelElement = document.getElementById('level');
+        const gameOverMessageElement = document.getElementById('gameOverMessage');
+        const restartButton = document.getElementById('restartButton');
+
+        // Game Board
+        const COLS = 10;
+        const ROWS = 20;
+        // Let's use a fixed size for now for predictability, and ensure canvas fits
+        const FIXED_BLOCK_SIZE = 28; // Adjusted for better fit on various screens
+
+        canvas.width = COLS * FIXED_BLOCK_SIZE;
+        canvas.height = ROWS * FIXED_BLOCK_SIZE;
+
+        // Preview canvases (Hold and Next)
+        const PREVIEW_BLOCK_SIZE = FIXED_BLOCK_SIZE * 0.75; // Make blocks in preview smaller
+        // Adjusted canvas size to better fit content based on PREVIEW_BLOCK_SIZE
+        const previewCanvasDimension = 4 * PREVIEW_BLOCK_SIZE + (PREVIEW_BLOCK_SIZE * 0.2 * 2); // 4 blocks + padding for aesthetics
+        holdCanvas.width = previewCanvasDimension;
+        holdCanvas.height = previewCanvasDimension;
+        nextBlockCanvas.width = previewCanvasDimension;
+        nextBlockCanvas.height = previewCanvasDimension;
+
+
+        // Colors and Tetrominoes
+        const COLORS = [
+            null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF',
+            '#FF8E0D', '#FFE138', '#3877FF'
+        ];
+        const TETROMINOES = {
+            'I': { shape: [[1, 1, 1, 1]], color: 1 },
+            'J': { shape: [[2, 0, 0], [2, 2, 2]], color: 2 },
+            'L': { shape: [[0, 0, 3], [3, 3, 3]], color: 3 },
+            'O': { shape: [[4, 4], [4, 4]], color: 4 },
+            'S': { shape: [[0, 5, 5], [5, 5, 0]], color: 5 },
+            'T': { shape: [[0, 6, 0], [6, 6, 6]], color: 6 },
+            'Z': { shape: [[7, 7, 0], [0, 7, 7]], color: 7 }
+        };
+
+        // Game State
+        let board;
+        let currentTetromino;
+        let nextTetromino;
+        let heldTetromino = null; // Stores the held tetromino
+        let canHold = true;       // Tracks if hold can be used for the current piece
+        let score;
+        let lines;
+        let level;
+        let dropStart;
+        let gameOver;
+        let dropInterval;
+        let animationFrameId;
+
+        function createBoard() {
+            return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        }
+
+        function spawnTetromino() {
+            const types = 'IJLOSTZ';
+            const type = types[Math.floor(Math.random() * types.length)];
+            const piece = JSON.parse(JSON.stringify(TETROMINOES[type])); // Deep copy
+            piece.x = Math.floor(COLS / 2) - Math.floor(piece.shape[0].length / 2);
+            piece.y = 0;
+            // Adjust y for pieces that have empty top rows in their definition (like T, S, Z standard)
+            if (piece.shape[0].every(val => val === 0)) {
+                 piece.y = -1; // Start slightly higher to compensate for empty first row in shape matrix
+            }
+             // For I piece, ensure it spawns correctly if its shape matrix is [[]]
+            if (type === 'I' && piece.shape.length === 1 && piece.shape[0].length === 4) {
+                // Standard I piece, y=0 is fine or adjust if needed based on visual preference
+            }
+
+            return piece;
+        }
+
+        function drawBlock(ctx, x, y, colorValue, blockSizeToUse, stroke = true) {
+            ctx.fillStyle = COLORS[colorValue];
+            ctx.fillRect(x * blockSizeToUse, y * blockSizeToUse, blockSizeToUse, blockSizeToUse);
+            if (stroke) {
+                ctx.strokeStyle = '#000'; // Black border for blocks
+                ctx.lineWidth = Math.max(1, blockSizeToUse * 0.06); // Slightly thicker border
+                ctx.strokeRect(x * blockSizeToUse, y * blockSizeToUse, blockSizeToUse, blockSizeToUse);
+            }
+        }
+
+        function drawTetrominoOnBoard(tetromino) {
+            if (!tetromino) return;
+            tetromino.shape.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value > 0) {
+                         // Ensure drawing only within board boundaries, especially for y < 0
+                        if (tetromino.y + r >= 0) {
+                            drawBlock(context, tetromino.x + c, tetromino.y + r, tetromino.color, FIXED_BLOCK_SIZE);
+                        }
+                    }
+                });
+            });
+        }
+
+        function drawBoard() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            board.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value > 0) {
+                        drawBlock(context, c, r, value, FIXED_BLOCK_SIZE);
+                    }
+                });
+            });
+            drawTetrominoOnBoard(currentTetromino);
+        }
+
+        function drawPreviewTetromino(tetromino, ctx, canvasElement, blockSize) {
+            ctx.fillStyle = '#181818'; // Preview canvas background
+            ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+            if (tetromino) {
+                const shape = tetromino.shape;
+                const shapeWidth = shape[0].length;
+                const shapeHeight = shape.length;
+
+                const totalShapePixelWidth = shapeWidth * blockSize;
+                const totalShapePixelHeight = shapeHeight * blockSize;
+                // Calculate offset to center the piece within its preview canvas
+                const offsetX = (canvasElement.width - totalShapePixelWidth) / 2 / blockSize;
+                const offsetY = (canvasElement.height - totalShapePixelHeight) / 2 / blockSize;
+
+                shape.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value > 0) {
+                           drawBlock(ctx, offsetX + c, offsetY + r, tetromino.color, blockSize, false); // No stroke for cleaner preview
+                        }
+                    });
+                });
+            }
+        }
+
+
+        function isValidMove(tetromino, newX, newY, newShape) {
+            const shape = newShape || tetromino.shape;
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c] > 0) {
+                        let boardX = newX + c;
+                        let boardY = newY + r;
+                        // Check wall collisions
+                        if (boardX < 0 || boardX >= COLS || boardY >= ROWS) {
+                            return false;
+                        }
+                        // Check collision with existing blocks (only if on board, i.e. boardY >= 0)
+                        if (boardY >= 0 && board[boardY] && board[boardY][boardX] > 0) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function mergeToBoard() {
+            if (!currentTetromino) return;
+            currentTetromino.shape.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value > 0) {
+                        let boardY = currentTetromino.y + r;
+                        let boardX = currentTetromino.x + c;
+                        // Only merge if the block is within the visible board area
+                        if (boardY >= 0 && boardY < ROWS && boardX >=0 && boardX < COLS) {
+                           board[boardY][boardX] = currentTetromino.color;
+                        } else if (boardY < 0) { // Piece merged above visible area - Game Over
+                            gameOver = true;
+                        }
+                    }
+                });
+            });
+             if (gameOver) showGameOver(); // If merging caused game over (e.g. piece locked above board)
+        }
+
+        function clearLines() {
+            let linesClearedThisTurn = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r].every(cell => cell > 0)) {
+                    linesClearedThisTurn++;
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    r++;
+                }
+            }
+            if (linesClearedThisTurn > 0) {
+                lines += linesClearedThisTurn;
+                if (linesClearedThisTurn === 1) score += 100 * level;
+                else if (linesClearedThisTurn === 2) score += 300 * level;
+                else if (linesClearedThisTurn === 3) score += 500 * level;
+                else if (linesClearedThisTurn >= 4) score += 800 * level;
+                updateScoreDisplay();
+                updateLevel();
+            }
+        }
+
+        function updateScoreDisplay() {
+            scoreElement.textContent = score;
+            linesElement.textContent = lines;
+            levelElement.textContent = level;
+        }
+
+        function updateLevel() {
+            const newLevel = Math.floor(lines / 10) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                dropInterval = Math.max(100, 1000 - (level - 1) * 70);
+            }
+        }
+
+        function rotateTetromino() {
+            if (!currentTetromino || gameOver) return;
+            const originalShape = currentTetromino.shape;
+            const N = originalShape.length;
+            const M = originalShape[0].length;
+            const newShape = Array.from({ length: M }, () => Array(N).fill(0));
+            for (let r = 0; r < N; r++) {
+                for (let c = 0; c < M; c++) {
+                    newShape[c][N - 1 - r] = originalShape[r][c];
+                }
+            }
+
+            // Basic wall kick attempts
+            const kickOffsets = [0, 1, -1, 2, -2]; // Order of kick attempts
+            for (const kickX of kickOffsets) {
+                // Try kicking vertically too for some complex rotations (SRS-like, simplified)
+                // For simplicity, only horizontal kicks are implemented here.
+                // For a full SRS, you'd have different kick tables for different pieces/rotations.
+                if (isValidMove(currentTetromino, currentTetromino.x + kickX, currentTetromino.y, newShape)) {
+                    currentTetromino.shape = newShape;
+                    currentTetromino.x += kickX;
+                    return; // Rotation successful
+                }
+            }
+        }
+
+
+        function resetPiecePosition(piece) {
+            piece.x = Math.floor(COLS / 2) - Math.floor(piece.shape[0].length / 2);
+            piece.y = 0;
+            if (piece.shape[0].every(val => val === 0)) {
+                 piece.y = -1;
+            }
+            return piece;
+        }
+
+        function dropTetromino() {
+            if (!currentTetromino || gameOver) return;
+            if (isValidMove(currentTetromino, currentTetromino.x, currentTetromino.y + 1)) {
+                currentTetromino.y++;
+            } else { // Piece has landed
+                mergeToBoard();
+                if (gameOver) return; // Game over check after merge
+
+                clearLines();
+                currentTetromino = nextTetromino;
+                nextTetromino = spawnTetromino();
+                canHold = true; // Allow hold for the new piece
+
+                if (!isValidMove(currentTetromino, currentTetromino.x, currentTetromino.y)) {
+                    gameOver = true; // New piece causes immediate collision
+                    showGameOver();
+                    return;
+                }
+                drawPreviewTetromino(nextTetromino, nextBlockContext, nextBlockCanvas, PREVIEW_BLOCK_SIZE);
+            }
+            dropStart = Date.now();
+        }
+
+        function hardDrop() {
+            if (!currentTetromino || gameOver) return;
+            let cellsDropped = 0;
+            while (isValidMove(currentTetromino, currentTetromino.x, currentTetromino.y + 1)) {
+                currentTetromino.y++;
+                cellsDropped++;
+            }
+            score += cellsDropped * 1; // Standard Tetris Guideline: 1 point per cell for soft/hard drop
+            dropTetromino();
+            updateScoreDisplay();
+        }
+
+        function holdPiece() {
+            if (!currentTetromino || gameOver || !canHold) return;
+
+            let temp = JSON.parse(JSON.stringify(currentTetromino)); // Deep copy current piece
+            if (heldTetromino) {
+                currentTetromino = JSON.parse(JSON.stringify(heldTetromino)); // Deep copy held piece to current
+                currentTetromino = resetPiecePosition(currentTetromino);
+            } else {
+                currentTetromino = nextTetromino;
+                nextTetromino = spawnTetromino();
+                drawPreviewTetromino(nextTetromino, nextBlockContext, nextBlockCanvas, PREVIEW_BLOCK_SIZE);
+            }
+            heldTetromino = temp; // Store the original current piece (now deep copied)
+            heldTetromino = resetPiecePosition(heldTetromino); // Reset its position for hold display consistency
+
+            if (!isValidMove(currentTetromino, currentTetromino.x, currentTetromino.y)) {
+                // If the piece from hold (or new piece if hold was empty) is invalid, it's game over.
+                // This is a critical game over condition.
+                // Attempt to merge the piece that was current before hold, then game over.
+                // This scenario is tricky; usually, a hold shouldn't directly cause game over unless the board is full.
+                // For simplicity, if the new current piece is invalid, we show game over.
+                // The piece that was current (temp) is now in hold. The new currentTetromino is the one causing issues.
+                // It's better to just set gameOver.
+                gameOver = true;
+                showGameOver();
+                return;
+            }
+
+            canHold = false;
+            drawPreviewTetromino(heldTetromino, holdContext, holdCanvas, PREVIEW_BLOCK_SIZE);
+            drawBoard(); // Redraw board with new current piece
+        }
+
+
+        function showGameOver() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameOverMessageElement.style.display = 'block';
+        }
+
+        function initGame() {
+            board = createBoard();
+            score = 0;
+            lines = 0;
+            level = 1;
+            dropInterval = 1000;
+            gameOver = false;
+            heldTetromino = null;
+            canHold = true;
+            dropStart = Date.now(); // Initialize dropStart
+
+            currentTetromino = spawnTetromino();
+            nextTetromino = spawnTetromino();
+
+            updateScoreDisplay();
+            drawPreviewTetromino(nextTetromino, nextBlockContext, nextBlockCanvas, PREVIEW_BLOCK_SIZE);
+            drawPreviewTetromino(heldTetromino, holdContext, holdCanvas, PREVIEW_BLOCK_SIZE);
+            gameOverMessageElement.style.display = 'none';
+        }
+
+        function startGame() {
+            initGame();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameLoop();
+        }
+        restartButton.addEventListener('click', startGame);
+
+
+        document.addEventListener('keydown', event => {
+            if (gameOver || !currentTetromino) return;
+
+            let actionTaken = false;
+            switch (event.key) {
+                case 'ArrowLeft': case 'a':
+                    if (isValidMove(currentTetromino, currentTetromino.x - 1, currentTetromino.y)) {currentTetromino.x--; actionTaken = true;}
+                    break;
+                case 'ArrowRight': case 'd':
+                    if (isValidMove(currentTetromino, currentTetromino.x + 1, currentTetromino.y)) {currentTetromino.x++; actionTaken = true;}
+                    break;
+                case 'ArrowDown': case 's':
+                    dropTetromino(); score += 1; updateScoreDisplay(); actionTaken = true; // dropTetromino handles its own drawing logic
+                    break;
+                case 'ArrowUp': case 'w':
+                    rotateTetromino(); actionTaken = true;
+                    break;
+                case ' ':
+                    event.preventDefault(); hardDrop(); actionTaken = true; // hardDrop handles its own drawing logic
+                    break;
+                case 'c': case 'C': case 'Shift':
+                    event.preventDefault(); holdPiece(); actionTaken = true; // holdPiece handles its own drawing logic
+                    break;
+            }
+            if (actionTaken && !gameOver) { // Redraw only if a move happened and not handled by the function itself
+                 // Most action functions now call drawBoard or trigger game loop which draws.
+                 // Explicit drawBoard here might be redundant for some actions but safe for others.
+                 // For simple moves (left/right/rotate), a drawBoard is needed.
+                if (['ArrowLeft', 'a', 'ArrowRight', 'd', 'ArrowUp', 'w'].includes(event.key)) {
+                    drawBoard();
+                }
+            }
+        });
+
+        document.getElementById('leftBtn').addEventListener('click', () => { if (!gameOver && currentTetromino && isValidMove(currentTetromino, currentTetromino.x - 1, currentTetromino.y)) {currentTetromino.x--; drawBoard();} });
+        document.getElementById('rightBtn').addEventListener('click', () => { if (!gameOver && currentTetromino && isValidMove(currentTetromino, currentTetromino.x + 1, currentTetromino.y)) {currentTetromino.x++; drawBoard();} });
+        document.getElementById('downBtn').addEventListener('click', () => { if (!gameOver && currentTetromino) {dropTetromino(); score += 1; updateScoreDisplay(); /* dropTetromino draws */} });
+        document.getElementById('rotateBtn').addEventListener('click', () => { if (!gameOver && currentTetromino) {rotateTetromino(); drawBoard();} });
+        document.getElementById('dropBtn').addEventListener('click', () => { if (!gameOver && currentTetromino) {hardDrop(); /* hardDrop draws */} });
+        document.getElementById('holdBtn').addEventListener('click', () => { if (!gameOver && currentTetromino) {holdPiece(); /* holdPiece draws */} });
+
+
+        function gameLoop() {
+            if (gameOver) {
+                showGameOver();
+                return;
+            }
+
+            const now = Date.now();
+            if (now - dropStart >= dropInterval) {
+                dropTetromino(); // This function now also checks for game over
+            }
+
+            if (!gameOver) { // Check gameOver status again after dropTetromino
+                drawBoard();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            } else {
+                // If dropTetromino resulted in gameOver, ensure message is shown and loop stops.
+                // mergeToBoard can also set gameOver.
+                showGameOver();
+            }
+        }
+
+        window.onload = () => {
+            startGame();
+        };
+
+    </script>
+</body>
+</html>
